@@ -1,0 +1,128 @@
+---
+
+- name: Ensure required collections are installed
+  hosts: 10.10.125.120
+  tasks:
+    - name: Install collections from requirements.yaml
+      command: /usr/bin/ansible-galaxy collection install -r collections/requirements.yaml
+      run_once: true
+
+- name: Archive a folder
+  hosts: 10.10.125.125
+  tasks:
+    - name: Create archive of folder
+      community.general.archive:
+        path: /tmp/test1
+        dest: /tmp/test2/FMW_HOME.tar.gz
+        format: gz
+      async: 999999999
+      poll: 0
+      register: archive_async
+      changed_when: false
+ 
+    - name: Wait for archive to complete
+      async_status:
+        jid: "{{ archive_async.ansible_job_id }}"
+      register: archive_status
+      retries: 999999999
+      delay: 60
+      until: archive_status.finished
+ 
+    - name: Display archive status
+      debug:
+        var: archive_status
+ 
+    - name: Fail if archive did not complete successfully
+      fail:
+        msg: "Archive did not complete within the expected time."
+      when: not archive_status.finished
+
+
+
+
+
+
+# ---
+# - name: Test gz archive creation
+#   hosts: all
+#   tasks:
+#     - name: Create a test directory
+#       file:
+#         path: /tmp/test_directory
+#         state: directory
+
+#     - name: Create a test file
+#       copy:
+#         content: "This is a test file."
+#         dest: /tmp/test_directory/test_file.txt
+
+#     - name: Create archive for test directory
+#       community.general.archive:
+#         path: /tmp/test_directory
+#         dest: /tmp/test_directory_archive.gz
+#         format: gz
+
+#     - name: Verify the archive file exists
+#       stat:
+#         path: /tmp/test_directory_archive.gz
+#       register: archive_stat
+
+#     - name: Debug archive creation result
+#       debug:
+#         msg: "Archive creation successful: {{ archive_stat.stat.exists }}"
+
+
+
+
+
+# ---
+# - name: Test
+#   hosts: 10.10.125.125
+#   gather_facts: yes
+#   vars:
+#     config_file: "cfg/{{ ebs_inst }}.yaml"
+#     logs: "/logs"
+
+#   tasks:
+#     - name: Include configuration file
+#       include_vars:
+#         file: "{{ config_file }}"
+
+#     - name: Find the most recently modified .tar file
+#       find:
+#         paths: "{{ appTier_SRC_BACKUP_DIR }}"
+#         patterns: "*.tar"
+#         recurse: no
+#         age_stamp: mtime
+#         file_type: file
+#       register: tar_files
+    
+#     - name: Sort tar files by modification time
+#       set_fact:
+#         latest_tar_file: "{{ tar_files.files | sort(attribute='mtime') | last }}"
+
+#     - name: Ensure that at least one .tar file was found
+#       fail:
+#         msg: "No .tar files found in {{ appTier_SRC_BACKUP_DIR }}"
+#       when: tar_files.matched == 0
+
+#     - name: Extract string from start until the first underscore
+#       set_fact:
+#         x: "{{ latest_tar_file.path | basename | regex_search('^[^_]+') }}"
+
+#     - name: Check if inventory directory exists
+#       shell: echo {{ inventory_location }}
+#       register: inventory_stat
+    
+#     - name: Filter and select path starting with /u01
+#       set_fact:
+#         inventory_location_extracted: "{{ item }}"
+#       loop: "{{ inventory_stat.stdout_lines }}"
+#       when: item.startswith('/u01')
+    
+#     - name: Check if inventory directory exists
+#       stat:
+#         path: "{{ inventory_location_extracted }}"
+#       register: inventory_stat
+    
+      
